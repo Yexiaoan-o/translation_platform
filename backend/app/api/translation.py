@@ -2,9 +2,10 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 from app.schemas.translation import TranslationRequest, TranslationResponse, SegmentResponse
 from app.services.translation_service import TranslationService
+from app.api.projects import project_service
 
 router = APIRouter()
-translation_service = TranslationService()
+translation_service = TranslationService(project_service)
 
 @router.post("/translate", response_model=TranslationResponse)
 async def translate(request: TranslationRequest):

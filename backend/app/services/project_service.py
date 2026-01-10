@@ -8,6 +8,7 @@ class ProjectService:
         # 这里可以初始化数据库连接等
         self.projects = []
         self.project_id_counter = 1
+        self.file_contents = {}  # 存储文件内容，按项目ID组织
 
     async def create_project(self, name: str, source_language: str, target_language: str, files: List):
         # 模拟创建项目
@@ -22,10 +23,15 @@ class ProjectService:
         self.project_id_counter += 1
         self.projects.append(project)
         
-        # 保存文件到临时目录
+        # 保存文件内容
+        project_files = []
         for file in files:
             file_content = await file.read()
-            # 这里可以添加文件保存逻辑
+            project_files.append({
+                "filename": file.filename,
+                "content": file_content.decode('utf-8') if isinstance(file_content, bytes) else file_content
+            })
+        self.file_contents[project["id"]] = project_files
         
         return ProjectResponse(**project)
 
@@ -54,5 +60,13 @@ class ProjectService:
         for i, project in enumerate(self.projects):
             if project["id"] == project_id:
                 self.projects.pop(i)
+                if project_id in self.file_contents:
+                    del self.file_contents[project_id]
                 return
         raise Exception(f"Project with id {project_id} not found")
+
+    async def get_project_files(self, project_id: int):
+        # 获取项目的文件内容
+        if project_id not in self.file_contents:
+            return []
+        return self.file_contents[project_id]

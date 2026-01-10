@@ -102,7 +102,7 @@
           
           <button 
             type="submit" 
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm font-medium"
             :disabled="isSubmitting"
           >
             {{ isSubmitting ? '添加中...' : '添加术语' }}
@@ -179,13 +179,13 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button 
                     @click="editTerm(term)" 
-                    class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4"
+                    class="text-blue-600 hover:text-blue-800 mr-4 transition-colors font-medium"
                   >
                     编辑
                   </button>
                   <button 
                     @click="deleteTerm(term.id)" 
-                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                    class="text-red-600 hover:text-red-800 transition-colors font-medium"
                   >
                     删除
                   </button>
@@ -201,6 +201,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { terminologyAPI } from '../api';
 
 // 术语表单数据
 const termForm = ref({
@@ -229,16 +230,10 @@ const filter = ref({
 const createTerm = async () => {
   isSubmitting.value = true;
   try {
-    // 模拟 API 调用
-    // 实际项目中应该使用 axios 等库调用后端 API
-    console.log('Creating term:', termForm.value);
+    // 调用API创建术语
+    const newTerm = await terminologyAPI.createTerm(termForm.value);
     
-    // 模拟创建成功
-    const newTerm = {
-      id: Date.now(),
-      ...termForm.value
-    };
-    
+    // 添加到术语列表
     terms.value.unshift(newTerm);
     
     // 重置表单
@@ -264,42 +259,11 @@ const createTerm = async () => {
 // 获取术语列表
 const fetchTerms = async () => {
   try {
-    // 模拟 API 调用
-    // 实际项目中应该使用 axios 等库调用后端 API
-    console.log('Fetching terms...');
-    
-    // 模拟术语数据
-    terms.value = [
-      {
-        id: 1,
-        source_term: 'API',
-        target_term: '应用程序编程接口',
-        source_language: 'en',
-        target_language: 'zh',
-        domain: '计算机科学',
-        definition: '应用程序编程接口，是一些预先定义的函数，目的是提供应用程序与开发人员基于某软件或硬件的访问能力'
-      },
-      {
-        id: 2,
-        source_term: 'Database',
-        target_term: '数据库',
-        source_language: 'en',
-        target_language: 'zh',
-        domain: '计算机科学',
-        definition: '数据库是按照数据结构来组织、存储和管理数据的仓库'
-      },
-      {
-        id: 3,
-        source_term: 'Algorithm',
-        target_term: '算法',
-        source_language: 'en',
-        target_language: 'zh',
-        domain: '计算机科学',
-        definition: '算法是解决问题的步骤集合，是对特定问题求解步骤的一种描述'
-      }
-    ];
+    // 调用API获取术语列表
+    terms.value = await terminologyAPI.getTerms();
   } catch (error) {
     console.error('Error fetching terms:', error);
+    alert('获取术语列表失败，请刷新页面重试');
   }
 };
 
@@ -314,9 +278,8 @@ const editTerm = (term) => {
 const deleteTerm = async (termId) => {
   if (confirm('确定要删除这个术语吗？')) {
     try {
-      // 模拟 API 调用
-      // 实际项目中应该使用 axios 等库调用后端 API
-      console.log('Deleting term:', termId);
+      // 调用API删除术语
+      await terminologyAPI.deleteTerm(termId);
       
       // 从列表中移除术语
       terms.value = terms.value.filter(term => term.id !== termId);

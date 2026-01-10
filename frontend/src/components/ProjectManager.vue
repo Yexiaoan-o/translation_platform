@@ -86,12 +86,12 @@
           </div>
           
           <button 
-            type="submit" 
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            :disabled="isSubmitting"
-          >
-            {{ isSubmitting ? '创建中...' : '创建项目' }}
-          </button>
+                  type="submit" 
+                  class="px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 transition-colors font-semibold text-base"
+                  :disabled="isSubmitting"
+                >
+                  {{ isSubmitting ? '创建中...' : '创建项目' }}
+                </button>
         </form>
       </div>
 
@@ -121,13 +121,13 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button 
                     @click="openWorkbench(project.id)" 
-                    class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4"
+                    class="text-blue-600 hover:text-blue-800 mr-4 transition-colors font-medium"
                   >
                     翻译
                   </button>
                   <button 
                     @click="deleteProject(project.id)" 
-                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                    class="text-red-600 hover:text-red-800 transition-colors font-medium"
                   >
                     删除
                   </button>
@@ -143,6 +143,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { projectAPI } from '../api';
 
 // 项目表单数据
 const projectForm = ref({
@@ -180,18 +181,10 @@ const createProject = async () => {
       formData.append('files', file);
     });
     
-    // 模拟 API 调用
-    // 实际项目中应该使用 axios 等库调用后端 API
-    console.log('Creating project:', projectForm.value);
-    console.log('Files:', selectedFiles.value);
+    // 调用API创建项目
+    const newProject = await projectAPI.createProject(formData);
     
-    // 模拟创建成功
-    const newProject = {
-      id: Date.now(),
-      ...projectForm.value,
-      created_at: new Date().toISOString()
-    };
-    
+    // 添加到项目列表
     projects.value.unshift(newProject);
     
     // 重置表单
@@ -215,46 +208,26 @@ const createProject = async () => {
 // 获取项目列表
 const fetchProjects = async () => {
   try {
-    // 模拟 API 调用
-    // 实际项目中应该使用 axios 等库调用后端 API
-    console.log('Fetching projects...');
-    
-    // 模拟项目数据
-    projects.value = [
-      {
-        id: 1,
-        name: '测试项目 1',
-        source_language: 'en',
-        target_language: 'zh',
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 2,
-        name: '测试项目 2',
-        source_language: 'zh',
-        target_language: 'en',
-        created_at: new Date(Date.now() - 86400000).toISOString()
-      }
-    ];
+    // 调用API获取项目列表
+    projects.value = await projectAPI.getProjects();
   } catch (error) {
     console.error('Error fetching projects:', error);
+    alert('获取项目列表失败，请刷新页面重试');
   }
 };
 
 // 打开翻译工作台
 const openWorkbench = (projectId) => {
-  // 实际项目中应该导航到翻译工作台页面，并传递项目 ID
-  console.log('Opening workbench for project:', projectId);
-  // 这里可以添加路由跳转逻辑
+  // 导航到翻译工作台页面，并传递项目 ID
+  window.location.href = `/workbench?projectId=${projectId}`;
 };
 
 // 删除项目
 const deleteProject = async (projectId) => {
   if (confirm('确定要删除这个项目吗？')) {
     try {
-      // 模拟 API 调用
-      // 实际项目中应该使用 axios 等库调用后端 API
-      console.log('Deleting project:', projectId);
+      // 调用API删除项目
+      await projectAPI.deleteProject(projectId);
       
       // 从列表中移除项目
       projects.value = projects.value.filter(project => project.id !== projectId);
