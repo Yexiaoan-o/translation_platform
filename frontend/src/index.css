@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* 这里可以定义一些全局背景颜色，确保页面不会看起来干巴巴的 */
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+}
