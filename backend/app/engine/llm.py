@@ -19,7 +19,8 @@ class LLMTranslator:
             try:
                 # 针对翻译模型的 Prompt 优化
                 # TranslateGemma 在特定的指令下表现更好
-                prompt = f"Translate the following text to {target_lang}. Only provide the translation, no explanation:\n\n{segment['source']}"
+                # 建议的 Prompt 格式
+                prompt = f"Translate the following text to {target_lang}. Only provide the translation while keeping the markdown characters, no explanation:\n\n{segment['source']}"
                 
                 response = await self.client.chat.completions.create(
                     model=self.model_name,
@@ -43,7 +44,7 @@ class LLMTranslator:
                 logger.error(f"Ollama 翻译失败 (Seg {segment['id']}): {e}")
                 return {**segment, "target": ""}
 
-    async def translate_segments_concurrency(self, segments: list, target_lang: str = "英文"):
+    async def translate_segments_concurrency(self, segments: list, target_lang: str = "English"):
         if not segments:
             return []
         
