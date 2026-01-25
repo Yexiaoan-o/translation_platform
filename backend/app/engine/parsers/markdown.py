@@ -1,62 +1,59 @@
-import re
+# backend/app/engine/parsers/markdown.py
+
+from markdown_it import MarkdownIt
 
 class MarkdownEngine:
     def __init__(self):
-        # 识别不需要翻译的结构
-        self.ignore_pattern = re.compile(r'^(\s*```.*|\s*---+\s*|\s*)$')
-        self.table_structure = re.compile(r'^[:\s\-|]*$')
-
-    def parse_to_segments(self, text: str):
-        lines = text.split('\n')
-        segments = []
-        in_code_block = False
-        
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            
-            # 状态切换：代码块
-            if stripped.startswith('```'):
-                in_code_block = not in_code_block
-                continue
-            
-            # 过滤逻辑：如果满足以下条件，则该行不需要翻译
-            if in_code_block or self.ignore_pattern.match(stripped):
-                continue
-            if self.table_structure.match(stripped) and '|' in line:
-                continue
-            
-            # 过滤掉纯符号行
-            content_only = re.sub(r'[#*`\-_\[\]()>]', '', stripped).strip()
-            if not content_only:
-                continue
-
-            # 只有通过过滤的行才作为译文对象
-            segments.append({
-                "id": i,
-                "source": line,
-                "target": ""
+        # 核心修复：使用 "js-default" 替代会报错的 "gfm"
+        try:
+            self.md = MarkdownIt("js-default", {
+                "html": True,
+                "linkify": False,
+                "typographer": True
             })
-            
+        except Exception as e:
+            # 增加一个备选方案，如果 js-default 也不行，就用最基础的
+            print(f"Markdown 引擎初始化警告: {e}")
+            self.md = MarkdownIt() 
+
+    def parse_to_segments(self, content: str):
+        # 现在 self.md 已经成功定义，不会再报 AttributeError
+        tokens = self.md.parse(content)
+        segments = []
+        original_lines = content.splitlines()
+        
+        for i, token in enumerate(tokens):
+            if token.type == "inline" and token.map:
+                start_line = token.map[0]
+                end_line = token.map[1]
+                
+                safe_start = max(0, start_line)
+                safe_end = min(len(original_lines), end_line)
+                
+                raw_source = "\n".join(original_lines[safe_start:safe_end])
+                
+                if raw_source.strip():
+                    segments.append({
+                        "id": i,
+                        "source": raw_source,
+                        "target": ""
+                    })
         return segments
 
-    def render_translation(self, original_text: str, translations: dict):
-        """
-        全量还原逻辑：
-        1. 遍历原文的每一行。
-        2. 如果该行的行号在 translations 字典中，则替换为译文。
-        3. 如果不在（说明是代码块、符号行或空行），则保留原文。
-        """
-        lines = original_text.split('\n')
-        result = []
-        
-        for i, line in enumerate(lines):
-            key = str(i) # 前端传回的 key 是字符串格式的行号
-            if key in translations and translations[key]:
-                # 这里的逻辑是：如果用户提供了译文，我们就使用译文
-                # 为了防止 AI 丢失 Markdown 符号，建议在导出时做符号补全
-                result.append(translations[key])
-            else:
-                # 没有任何匹配，说明这一行是结构符号或不需要翻译的内容，直接放回原文
-                result.append(line)
+    def render_translation(self, original_content: str, translations: dict):
+        tokens = self.md.parse(original_content)
+        output = []
+        seen_ids = set()
+
+        for i, token in enumerate(tokens):
+            if token.type == "inline":
+                if i in seen_ids: continue
                 
-        return '\n'.join(result)
+                val = translations.get(str(i)) or translations.get(i)
+                
+                if val and str(val).strip():
+                    output.append(str(val))
+                    output.append("\n\n")
+                    seen_ids.add(i)
+        
+        return "".join(output).strip()

@@ -48,9 +48,22 @@ async def save(project_id: str, req: SaveRequest):
     return {"status": "ok"}
 
 @app.post("/api/v1/export/{project_id}")
-async def export(project_id: str, translations: dict = Body(...)):
-    with open(os.path.join(UPLOAD_DIR, f"{project_id}.md"), "r", encoding="utf-8") as f: original = f.read()
-    return {"markdown": engine.render_translation(original, translations)}
+async def export_md(project_id: str, translations: dict[str, str] = Body(...)):
+    # 1. 查找磁盘原文 (用于重新 Parse 获取 Token ID)
+    file_path = os.path.join(UPLOAD_DIR, f"{project_id}.md")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="原文模板缺失")
+    
+    with open(file_path, "r", encoding="utf-8") as f:
+        original_content = f.read()
+    
+    # 2. 渲染
+    try:
+        # 这里调用的 render_translation 会根据 ID 只挑出译文拼接
+        final_text = engine.render_translation(original_content, translations)
+        return {"markdown": final_text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"渲染失败: {str(e)}")
 
 @app.delete("/api/v1/project/{project_id}")
 async def delete_project(project_id: str):
