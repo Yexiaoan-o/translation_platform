@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConfirmDialog from '../components/Dialogs/ConfirmDialog';
+import AlertDialog from '../components/Dialogs/AlertDialog';
 
 interface Project {
   id: string;
@@ -12,6 +14,18 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [useMT, setUseMT] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // 确认对话框状态
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmProjectId, setConfirmProjectId] = useState('');
+  const [confirmProjectName, setConfirmProjectName] = useState('');
+  
+  // 警告对话框状态
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'error' | 'success' | 'info'>('error');
+  
   const navigate = useNavigate();
 
   // 1. 获取项目列表
@@ -51,30 +65,61 @@ export default function Dashboard() {
         navigate(`/workspace/${data.project_id}`);
       }
     } catch (err) {
-      alert("上传并解析失败，请检查后端服务。");
       console.error(err);
+      setLoading(false);
+      setAlertTitle('上传失败');
+      setAlertMessage('上传并解析失败，请检查后端服务。');
+      setAlertType('error');
+      setIsAlertOpen(true);
     } finally {
       setLoading(false);
     }
   };
 
   // 3. 处理删除项目
-  const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
+  const handleDelete = (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation(); // 防止触发进入项目的导航
-    if (!window.confirm(`确定要彻底删除项目 "${name}" 吗？此操作不可撤销。`)) return;
+    setConfirmProjectId(id);
+    setConfirmProjectName(name);
+    setIsConfirmOpen(true);
+  };
 
+  // 4. 确认删除项目
+  const confirmDelete = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/project/${id}`, {
+      const res = await fetch(`http://localhost:8000/api/v1/project/${confirmProjectId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
-        setProjects(prev => prev.filter(p => p.id !== id));
+        setProjects(prev => prev.filter(p => p.id !== confirmProjectId));
+        setIsConfirmOpen(false);
+        // 显示删除成功消息
+        setAlertTitle('删除成功');
+        setAlertMessage(`项目 "${confirmProjectName}" 已成功删除`);
+        setAlertType('success');
+        setIsAlertOpen(true);
       } else {
-        alert("删除失败");
+        setIsConfirmOpen(false);
+        setAlertTitle('删除失败');
+        setAlertMessage('删除项目时发生错误');
+        setAlertType('error');
+        setIsAlertOpen(true);
       }
     } catch (err) {
       console.error("Delete error:", err);
+      setIsConfirmOpen(false);
+      setAlertTitle('删除失败');
+      setAlertMessage('网络错误，请稍后重试');
+      setAlertType('error');
+      setIsAlertOpen(true);
     }
+  };
+
+  // 5. 取消删除
+  const cancelDelete = () => {
+    setIsConfirmOpen(false);
+    setConfirmProjectId('');
+    setConfirmProjectName('');
   };
 
   return (
@@ -167,6 +212,24 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      
+      {/* 确认对话框 */}
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="确认删除"
+        message={`确定要彻底删除项目 "${confirmProjectName}" 吗？此操作不可撤销。`}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
+      
+      {/* 警告对话框 */}
+      <AlertDialog
+        isOpen={isAlertOpen}
+        title={alertTitle}
+        message={alertMessage}
+        type={alertType}
+        onClose={() => setIsAlertOpen(false)}
+      />
     </div>
   );
 }
